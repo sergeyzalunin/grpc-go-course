@@ -11,13 +11,16 @@ import (
 	"github.com/sergeyzalunin/grpc-go-course/greet/greetpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
 func main() {
 	fmt.Println("Hi from client")
 
-	cc, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	opts := getTLSClientOptions(true)
+
+	cc, err := grpc.Dial("localhost:50051", opts)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,6 +34,28 @@ func main() {
 	// doClientStreaming(c)
 	// doBiDiStreaming(c)
 	doGreetWithDeadline(c)
+}
+
+// getTLSClientOptions returns already setup TLS dial option
+// when tls parameter is true
+// to use it, start gen_cert.sh manualy to generate certificates
+func getTLSClientOptions(tls bool) grpc.DialOption {
+	var opts grpc.DialOption
+
+	if tls {
+		certFile := "../../ssl/minica.pem" // Certificate Authority Trust certificate
+
+		creds, sslErr := credentials.NewClientTLSFromFile(certFile, "")
+		if sslErr == nil {
+			opts = grpc.WithTransportCredentials(creds)
+		} else {
+			log.Fatalf("Filed loading certificates: %v", sslErr)
+		}
+	} else {
+		opts = grpc.WithInsecure()
+	}
+
+	return opts
 }
 
 func doUnary(c greetpb.GreetServiceClient) {
@@ -246,7 +271,7 @@ func doGreetWithDeadlineDuration(c greetpb.GreetServiceClient, d time.Duration) 
 			if errState.Code() == codes.DeadlineExceeded {
 				fmt.Println("Timeout was hit! Deadline was exceeded!")
 			} else {
-				fmt.Printf("unexcepted error: %v\n", errState)
+				fmt.Printf("unexcepted error: %v\n", errState.Err())
 			}
 		} else {
 			fmt.Printf("Error while calling GreetWithDeadline: %v\n", err)

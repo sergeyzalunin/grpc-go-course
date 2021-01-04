@@ -11,8 +11,26 @@ import (
 	pb "github.com/sergeyzalunin/grpc-go-course/calculator/calculatorpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
+
+func main() {
+	fmt.Println("Hi")
+
+	listener, err := net.Listen("tcp", "0.0.0.0:50051") //nolint
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	s := grpc.NewServer()
+	pb.RegisterCalculatorServiceServer(s, &server{})
+	reflection.Register(s)
+
+	if err = s.Serve(listener); err != nil {
+		fmt.Print(err)
+	}
+}
 
 type server struct{}
 
@@ -139,20 +157,4 @@ func (s *server) SquareRoot(
 	return &pb.SquareRootResponse{
 		NumberRoot: float64(number * number),
 	}, nil
-}
-
-func main() {
-	fmt.Println("Hi")
-
-	listener, err := net.Listen("tcp", "0.0.0.0:50051") //nolint
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	s := grpc.NewServer()
-	pb.RegisterCalculatorServiceServer(s, &server{})
-
-	if err = s.Serve(listener); err != nil {
-		fmt.Print(err)
-	}
 }

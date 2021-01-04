@@ -1,0 +1,10 @@
+version: '3'
+
+tasks:
+  dc-up:
+    cmds:
+      - docker-compose up --remove-orphans
+
+  dc-down:
+    cmds:
+      - docker-compose down

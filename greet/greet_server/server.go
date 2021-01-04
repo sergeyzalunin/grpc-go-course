@@ -14,8 +14,49 @@ import (
 	"github.com/sergeyzalunin/grpc-go-course/greet/greetpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/reflection"
 )
+
+func main() {
+	fmt.Println("Hi")
+
+	listener, err := net.Listen("tcp", "localhost:50051")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	opts := getTLSServerOptions(false)
+	s := grpc.NewServer(opts...)
+	greetpb.RegisterGreetServiceServer(s, &server{})
+	reflection.Register(s)
+	
+	if err = s.Serve(listener); err != nil {
+		fmt.Print(err)
+	}
+}
+
+// getTLSServerOptions returns already setup TLS server option
+// when tls parameter is true
+// to use it, start gen_cert.sh manualy to generate certificates
+func getTLSServerOptions(tls bool) []grpc.ServerOption {
+	opts := []grpc.ServerOption{}
+
+	if tls {
+		certFile := "../../ssl/localhost/cert.pem"
+		keyFile := "../../ssl/localhost/key.pem"
+
+		creds, sslErr := credentials.NewServerTLSFromFile(certFile, keyFile)
+		if sslErr == nil {
+			opts = append(opts, grpc.Creds(creds))
+		} else {
+			log.Fatalf("Filed loading certificates: %v", sslErr)
+		}
+	}
+
+	return opts
+}
 
 type server struct{}
 
@@ -136,20 +177,4 @@ func (s *server) GreetWithDedline(
 	return &greetpb.GreetWithDedlineResponse{
 		Result: result,
 	}, nil
-}
-
-func main() {
-	fmt.Println("Hi")
-
-	listener, err := net.Listen("tcp", "0.0.0.0:50051") //nolint
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	s := grpc.NewServer()
-	greetpb.RegisterGreetServiceServer(s, &server{})
-
-	if err = s.Serve(listener); err != nil {
-		fmt.Print(err)
-	}
 }
